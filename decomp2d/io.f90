@@ -276,7 +276,6 @@ contains
     return
   end subroutine write_var_real
 
-
   subroutine write_var_complex(fh,disp,ipencil,var,opt_decomp)
 
     implicit none
@@ -852,13 +851,14 @@ contains
   end subroutine mpiio_write_real_coarse
 
 #ifdef ADIOS2
-  subroutine adios2_register_variable(io, varname, ipencil, icoarse)
+  subroutine adios2_register_variable(io, varname, ipencil, icoarse, type)
 
     implicit none
 
     integer, intent(IN) :: ipencil !(x-pencil=1; y-pencil=2; z-pencil=3)
     integer, intent(IN) :: icoarse !(nstat=1; nvisu=2)
     type(adios2_io), intent(in) :: io
+    integer, intent(in) :: type
     
     character*(*), intent(in) :: varname
 
@@ -875,13 +875,15 @@ contains
     call adios2_inquire_variable(var_handle, io, varname, ierror)
     if (.not.var_handle % valid) then
        !! New variable
-       print *, "Registering variable for IO: ", varname
-   
+       if (nrank .eq. 0) then
+          print *, "Registering variable for IO: ", varname
+       endif
+       
        ! Need to set the ADIOS2 data type
-       if (mytype_single.eq.kind(0.0d0)) then
+       if (type.eq.kind(0.0d0)) then
           !! Double
           data_type = adios2_type_dp
-       else if (mytype_single.eq.kind(0.0)) then
+       else if (type.eq.kind(0.0)) then
           !! Single
           data_type = adios2_type_real
        else
@@ -916,7 +918,7 @@ contains
 
     call adios2_inquire_variable(var_handle, io, varname, ierror)
     if (.not.var_handle % valid) then
-       call adios2_register_variable(io, varname, ipencil, icoarse)
+       call adios2_register_variable(io, varname, ipencil, icoarse, kind(var))
     endif
 
     call adios2_put(engine, var_handle, var, adios2_mode_deferred, ierror)

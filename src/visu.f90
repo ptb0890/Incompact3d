@@ -33,6 +33,7 @@ module visu
 
 #ifdef ADIOS2
   use adios2
+  use var, only : adios
 #endif
   
   implicit none
@@ -51,7 +52,6 @@ module visu
   character(len=9) :: ifilenameformat = '(I3.3)'
   real, save :: tstart, tend
 #ifdef ADIOS2
-  type(adios2_adios) :: adios
   type(adios2_io) :: io_write_real_coarse
   type(adios2_engine) :: engine_write_real_coarse
 #endif
@@ -83,8 +83,6 @@ contains
 
 #ifdef ADIOS2
     integer :: ierror
-    logical :: adios2_debug_mode
-    character(len=80) :: config_file="adios2_config.xml"
     character(len=80) :: outfile
     integer :: is
 #endif
@@ -130,14 +128,6 @@ contains
     endif
 
 #ifdef ADIOS2
-    !! TODO: make this a runtime-option
-    adios2_debug_mode = .true.
-
-    call adios2_init(adios, trim(config_file), MPI_COMM_WORLD, adios2_debug_mode, ierror)
-    if (ierror.ne.0) then
-       print *, "Error initialising ADIOS2 - is adios2_config.xml present and valid?"
-       call MPI_ABORT(MPI_COMM_WORLD, -1, ierror)
-    endif
     call adios2_declare_io(io_write_real_coarse, adios, "solution-io", ierror)
     if (io_write_real_coarse % engine_type.eq."BP4") then
        write(outfile, *) "data.bp4"
@@ -149,16 +139,16 @@ contains
     endif
 
     !! Register variables
-    call adios2_register_variable(io_write_real_coarse, "ux", 1, 2)
-    call adios2_register_variable(io_write_real_coarse, "uy", 1, 2)
-    call adios2_register_variable(io_write_real_coarse, "uz", 1, 2)
-    call adios2_register_variable(io_write_real_coarse, "pp", 1, 2)
+    call adios2_register_variable(io_write_real_coarse, "ux", 1, 2, mytype)
+    call adios2_register_variable(io_write_real_coarse, "uy", 1, 2, mytype)
+    call adios2_register_variable(io_write_real_coarse, "uz", 1, 2, mytype)
+    call adios2_register_variable(io_write_real_coarse, "pp", 1, 2, mytype)
     if (ilmn) then
-       call adios2_register_variable(io_write_real_coarse, "rho", 1, 2)
+       call adios2_register_variable(io_write_real_coarse, "rho", 1, 2, mytype)
     endif
     if (iscalar.ne.0) then
        do is = 1, numscalar
-          call adios2_register_variable(io_write_real_coarse, "phi"//char(48+is), 1, 2)
+          call adios2_register_variable(io_write_real_coarse, "phi"//char(48+is), 1, 2, mytype)
        enddo
     endif
     
